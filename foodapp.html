@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Foodify — Static Demo</title>
+  <style>
+    :root{
+      --accent: #1f7a8c;
+      --accent-dark:#165a66;
+      --muted:#666;
+      --card:#fff;
+      --bg:#f4f6f8;
+      --danger:#e74c3c;
+    }
+    *{box-sizing:border-box}
+    body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial; margin:0; background:var(--bg); color:#111}
+    .container{max-width:1100px;margin:24px auto;padding:0 16px}
+    header{background:var(--card);box-shadow:0 1px 4px rgba(0,0,0,.06);padding:14px 0;position:sticky;top:0;z-index:10}
+    .nav{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .brand{font-weight:700;color:var(--accent);font-size:20px}
+    .navlinks{display:flex;gap:12px;align-items:center}
+    a.btn{background:var(--accent);color:#fff;padding:8px 12px;border-radius:8px;text-decoration:none}
+    a.link{color:var(--accent-dark);text-decoration:none;font-weight:600}
+    .badge{background:var(--danger);color:#fff;border-radius:999px;padding:2px 8px;font-size:12px;margin-left:6px}
+
+    /* layout */
+    .grid {display:grid;gap:16px}
+    .menu-grid{grid-template-columns: repeat(auto-fill,minmax(240px,1fr));}
+    .card{background:var(--card);padding:12px;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.04);display:flex;flex-direction:column}
+    .card img{width:100%;height:160px;object-fit:cover;border-radius:8px}
+    .card h3{margin:8px 0 4px;font-size:16px}
+    .card p{margin:0;color:var(--muted);font-size:13px}
+    .card .meta{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+    .card button{padding:8px 10px;border-radius:8px;border:0;background:var(--accent);color:#fff;cursor:pointer}
+    .card .price{font-weight:700}
+
+    /* cart */
+    .cart-list{display:flex;flex-direction:column;gap:12px}
+    .cart-item{display:flex;gap:12px;align-items:center;padding:8px;border-radius:8px;background:#fff}
+    .cart-item img{width:72px;height:72px;object-fit:cover;border-radius:8px}
+    .qty{display:flex;align-items:center;gap:8px}
+    input[type=number]{width:64px;padding:6px;border-radius:6px;border:1px solid #ddd}
+
+    /* checkout summary */
+    .summary{background:#fff;padding:12px;border-radius:10px}
+    .muted{color:var(--muted)}
+
+    /* admin */
+    .admin-form input, .admin-form button {padding:8px;border-radius:6px;border:1px solid #ddd}
+    .admin-form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+    footer{padding:20px 0;text-align:center;color:var(--muted);font-size:14px;margin-top:20px}
+
+    /* small */
+    @media (max-width:600px){
+      .card img{height:140px}
+      .navlinks{gap:6px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <div style="display:flex;align-items:center;gap:18px">
+        <div class="brand">Foodify</div>
+        <nav class="navlinks">
+          <a href="#menu" class="link">Menu</a>
+          <a href="#cart" class="link">Cart</a>
+          <a href="#orders" class="link">Orders</a>
+        </nav>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <a href="#admin" class="link">Admin</a>
+        <a href="#cart" class="btn">Cart <span id="cartCount" class="badge" style="display:none">0</span></a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" id="app">
+    <!-- Dynamic content injected here -->
+  </main>
+
+  <footer>
+    Built for demo • Save as <code>index.html</code> and open in Chrome
+  </footer>
+
+<script>
+/* ---------------------------
+   Sample static menu data
+   (in a real app you'd fetch this from backend)
+   --------------------------- */
+const SAMPLE_MENU = [
+  { id: 'm1', name: 'Margherita Pizza', category:'Pizza', price:249, image:'https://media.istockphoto.com/id/686957124/photo/pizza-margherita.jpg?s=612x612&w=0&k=20&c=STQALvMIjcgXPIvpXXUXItAl05QtbmEUQ_PfwSato48=' },
+  { id: 'm2', name: 'Paneer Tikka Wrap', category:'Wraps', price:169, image:'https://spicecravings.com/wp-content/uploads/2020/12/Paneer-kathi-Roll-Featured-1.jpg' },
+  { id: 'm3', name: 'Veg Biryani', category:'Rice', price:199, image:'https://images.unsplash.com/photo-1605475128555-9f0e1bf7a6de?auto=format&fit=crop&w=800&q=60' },
+  { id: 'm4', name: 'Caesar Salad', category:'Salad', price:149, image:'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=60' },
+  { id: 'm5', name: 'Chocolate Brownie', category:'Dessert', price:99, image:'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=60' },
+  { id: 'm6', name: 'Veg Burger', category:'Burgers', price:129, image:'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=800&q=60' }
+];
+
+/* ---------------------------
+   LocalStorage keys & helpers
+   --------------------------- */
+const LS_MENU = 'foodify_menu_v1';
+const LS_CART = 'foodify_cart_v1';
+const LS_ORDERS = 'foodify_orders_v1';
+
+function loadMenu(){
+  try {
+    const raw = localStorage.getItem(LS_MENU);
+    if(raw) return JSON.parse(raw);
+  } catch(e){}
+  // default fallback
+  localStorage.setItem(LS_MENU, JSON.stringify(SAMPLE_MENU));
+  return SAMPLE_MENU.slice();
+}
+function saveMenu(menu){ localStorage.setItem(LS_MENU, JSON.stringify(menu)); }
+
+function loadCart(){
+  try{ return JSON.parse(localStorage.getItem(LS_CART) || '[]') } catch(e){ return [] }
+}
+function saveCart(cart){ localStorage.setItem(LS_CART, JSON.stringify(cart)); updateCartBadge(); }
+
+function loadOrders(){ try{ return JSON.parse(localStorage.getItem(LS_ORDERS) || '[]') } catch(e){ return [] } }
+function saveOrders(o){ localStorage.setItem(LS_ORDERS, JSON.stringify(o)) }
+
+/* ---------------------------
+   Rendering & routing
+   --------------------------- */
+const app = document.getElementById('app');
+let menu = loadMenu();
+let cart = loadCart();
+
+function updateCartBadge(){
+  const count = cart.reduce((s,i)=> s + (i.qty||0), 0);
+  const el = document.getElementById('cartCount');
+  if(!el) return;
+  if(count>0){ el.style.display='inline-block'; el.textContent = count } else el.style.display='none';
+}
+updateCartBadge();
+
+function navigate(){
+  const hash = location.hash.replace('#','') || 'menu';
+  if(hash === 'menu') renderMenu();
+  else if(hash === 'cart') renderCart();
+  else if(hash === 'checkout') renderCheckout();
+  else if(hash === 'admin') renderAdmin();
+  else if(hash === 'orders') renderOrders();
+  else renderMenu();
+}
+window.addEventListener('hashchange', navigate);
+navigate();
+
+/* ---------------------------
+   Menu page
+   --------------------------- */
+function renderMenu(){
+  app.innerHTML = `
+    <section>
+      <h1 style="margin:0 0 10px">Menu</h1>
+      <p class="muted">Tap Add to Cart to collect items. Cart persists in localStorage.</p>
+    </section>
+    <section style="margin-top:16px" class="grid menu-grid" id="menuGrid">
+    </section>
+  `;
+  const grid = document.getElementById('menuGrid');
+  menu.forEach(item=>{
+    const card = document.createElement('div');
+    card.className='card';
+    card.innerHTML = `
+      <img src="${item.image}" alt="${escapeHtml(item.name)}">
+      <h3>${escapeHtml(item.name)}</h3>
+      <p class="muted">${escapeHtml(item.category)}</p>
+      <div class="meta">
+        <div class="price">₹${Number(item.price).toFixed(2)}</div>
+        <div><button data-id="${item.id}">Add</button></div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  // attach add listeners
+  grid.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const id = btn.dataset.id;
+      const it = menu.find(m=>m.id===id);
+      if(!it) return alert('Item not found');
+      addToCart(it, 1);
+      btn.textContent = 'Added';
+      setTimeout(()=> btn.textContent = 'Add', 700);
+    });
+  });
+}
+
+/* ---------------------------
+   Cart logic
+   --------------------------- */
+function addToCart(item, qty=1){
+  const existing = cart.find(c=>c.id===item.id);
+  if(existing){ existing.qty += qty; }
+  else cart.push({ id:item.id, name:item.name, price:item.price, image:item.image, qty });
+  saveCart(cart);
+  updateCartBadge();
+}
+
+function renderCart(){
+  app.innerHTML = `
+    <section>
+      <h1 style="margin:0 0 8px">Your Cart</h1>
+      <p class="muted">Review items before checkout</p>
+    </section>
+    <section style="margin-top:12px; display:grid; grid-template-columns: 1fr 320px; gap:16px;">
+      <div>
+        <div id="cartList" class="cart-list"></div>
+      </div>
+      <aside>
+        <div class="summary">
+          <h3>Order Summary</h3>
+          <div id="summaryList" style="margin-top:10px"></div>
+          <div style="margin-top:12px">
+            <button id="checkoutBtn" class="btn" style="width:100%">Proceed to Checkout</button>
+          </div>
+        </div>
+      </aside>
+    </section>
+  `;
+  const listEl = document.getElementById('cartList');
+  if(cart.length===0){
+    listEl.innerHTML = `<div class="card"><p>Your cart is empty — <a href="#menu">browse menu</a></p></div>`;
+    document.getElementById('summaryList').innerHTML = `<div class="muted">No items</div>`;
+    document.getElementById('checkoutBtn').disabled = true;
+    return;
+  }
+  cart.forEach(ci=>{
+    const item = document.createElement('div');
+    item.className='cart-item';
+    item.innerHTML = `
+      <img src="${ci.image}">
+      <div style="flex:1">
+        <div style="font-weight:600">${escapeHtml(ci.name)}</div>
+        <div class="muted">₹${Number(ci.price).toFixed(2)}</div>
+      </div>
+      <div class="qty">
+        <input type="number" min="1" value="${ci.qty}" data-id="${ci.id}">
+        <button data-remove="${ci.id}" style="background:transparent;border:0;color:var(--danger);cursor:pointer">Remove</button>
+      </div>
+    `;
+    listEl.appendChild(item);
+  });
+
+  // summary
+  renderSummary();
+
+  // listeners for qty and remove
+  listEl.querySelectorAll('input[type=number]').forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      const id = e.target.dataset.id;
+      const val = Number(e.target.value) || 1;
+      cart = cart.map(c => c.id===id ? {...c, qty: val} : c);
+      saveCart(cart);
+      renderCart(); // re-render for consistency
+    });
+  });
+  listEl.querySelectorAll('[data-remove]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      const id = e.target.dataset.remove;
+      cart = cart.filter(c=>c.id !== id);
+      saveCart(cart);
+      renderCart();
+    });
+  });
+
+  document.getElementById('checkoutBtn').addEventListener('click', ()=> location.hash='checkout');
+}
+
+function renderSummary(){
+  const sumEl = document.getElementById('summaryList');
+  const subtotal = cart.reduce((s,i)=> s + (i.price*(i.qty||0)), 0);
+  const gst = +(subtotal * 0.05).toFixed(2);
+  const total = +(subtotal + gst).toFixed(2);
+  sumEl.innerHTML = `
+    <div style="display:flex;justify-content:space-between"><span>Subtotal</span><strong>₹${subtotal.toFixed(2)}</strong></div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px"><span>GST (5%)</span><strong>₹${gst.toFixed(2)}</strong></div>
+    <hr style="margin:10px 0">
+    <div style="display:flex;justify-content:space-between"><strong>Total</strong><strong>₹${total.toFixed(2)}</strong></div>
+  `;
+}
+
+/* ---------------------------
+   Checkout
+   --------------------------- */
+function renderCheckout(){
+  if(cart.length===0){ location.hash='cart'; return; }
+  app.innerHTML = `
+    <section>
+      <h1 style="margin:0 0 8px">Checkout</h1>
+      <p class="muted">Enter delivery details (this demo won't process real payments)</p>
+    </section>
+    <section style="margin-top:12px; display:grid; grid-template-columns: 1fr 320px; gap:16px;">
+      <div>
+        <div class="card">
+          <label class="muted">Full name</label>
+          <input id="name" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ddd;margin-top:6px" placeholder="Your name">
+          <label class="muted" style="margin-top:10px;display:block">Address</label>
+          <textarea id="addr" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ddd;margin-top:6px" rows="4"></textarea>
+          <label class="muted" style="margin-top:10px;display:block">Phone</label>
+          <input id="phone" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ddd;margin-top:6px" placeholder="Phone number">
+          <div style="margin-top:12px">
+            <button id="place" class="btn">Place Order</button>
+          </div>
+          <div id="checkoutMsg" style="margin-top:10px"></div>
+        </div>
+      </div>
+      <aside>
+        <div class="summary">
+          <h3>Order Summary</h3>
+          <div id="checkoutSummary" style="margin-top:10px"></div>
+        </div>
+      </aside>
+    </section>
+  `;
+  // fill summary
+  (function(){
+    const subtotal = cart.reduce((s,i)=> s + (i.price*(i.qty||0)), 0);
+    const gst = +(subtotal * 0.05).toFixed(2);
+    const total = +(subtotal + gst).toFixed(2);
+    document.getElementById('checkoutSummary').innerHTML = `
+      ${cart.map(i=> `<div style="display:flex;justify-content:space-between"><div>${escapeHtml(i.name)} x ${i.qty}</div><div>₹${(i.price*i.qty).toFixed(2)}</div></div>`).join('')}
+      <hr style="margin:8px 0">
+      <div style="display:flex;justify-content:space-between"><span>Subtotal</span><strong>₹${subtotal.toFixed(2)}</strong></div>
+      <div style="display:flex;justify-content:space-between"><span>GST(5%)</span><strong>₹${gst.toFixed(2)}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px"><strong>Total</strong><strong>₹${total.toFixed(2)}</strong></div>
+    `;
+  })();
+
+  document.getElementById('place').addEventListener('click',()=>{
+    const name = document.getElementById('name').value.trim();
+    const addr = document.getElementById('addr').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    if(!name || !addr || !phone){ 
+      const msg = document.getElementById('checkoutMsg'); msg.innerHTML = '<div style="color:var(--danger)">Please fill all fields</div>'; return;
+    }
+    // create fake order
+    const orders = loadOrders();
+    const order = {
+      id: 'ORD' + Date.now(),
+      name, addr, phone,
+      items: cart.slice(),
+      total: cart.reduce((s,i)=> s + (i.price*(i.qty||0)), 0),
+      created: new Date().toISOString(),
+      status:'preparing'
+    };
+    orders.push(order); saveOrders(orders);
+    cart = []; saveCart(cart);
+    document.getElementById('checkoutMsg').innerHTML = '<div style="color:green">Order placed! Redirecting to Orders...</div>';
+    setTimeout(()=> location.hash='orders', 900);
+  });
+}
+
+/* ---------------------------
+   Orders page
+   --------------------------- */
+function renderOrders(){
+  const orders = loadOrders();
+  app.innerHTML = `
+    <section><h1 style="margin:0 0 8px">Your Orders</h1><p class="muted">List of placed orders (demo)</p></section>
+    <section style="margin-top:12px">
+      <div id="ordersList"></div>
+    </section>
+  `;
+  const el = document.getElementById('ordersList');
+  if(orders.length===0) el.innerHTML = '<div class="card">No orders yet.</div>';
+  else{
+    orders.slice().reverse().forEach(o=>{
+      const card = document.createElement('div'); card.className='card'; card.style.marginBottom='12px';
+      card.innerHTML = `
+        <div style="display:flex;justify-content:space-between">
+          <div><strong>Order: ${o.id}</strong><div class="muted">${new Date(o.created).toLocaleString()}</div></div>
+          <div><strong>${o.status}</strong></div>
+        </div>
+        <div style="margin-top:8px">
+          ${o.items.map(i=>`<div style="display:flex;justify-content:space-between"><div>${escapeHtml(i.name)} x ${i.qty}</div><div>₹${(i.price*i.qty).toFixed(2)}</div></div>`).join('')}
+        </div>
+      `;
+      el.appendChild(card);
+    });
+  }
+}
+
+/* ---------------------------
+   Simple Admin panel (protected)
+   --------------------------- */
+function renderAdmin(){
+  app.innerHTML = `
+    <section><h1 style="margin:0 0 8px">Admin</h1><p class="muted">Protected demo panel — enter password</p></section>
+    <section style="margin-top:12px" class="card">
+      <div id="adminContent">
+        <div style="margin-bottom:12px">
+          <input id="adminPwd" placeholder="Password" style="padding:8px;border:1px solid #ddd;border-radius:6px">
+          <button id="adminLogin" class="btn" style="margin-left:8px">Unlock</button>
+        </div>
+        <p class="muted">Password for demo: <code>admin123</code></p>
+      </div>
+    </section>
+  `;
+
+  document.getElementById('adminLogin').addEventListener('click', ()=>{
+    const v = document.getElementById('adminPwd').value;
+    if(v !== 'admin123'){ alert('Wrong password'); return; }
+    showAdminPanel();
+  });
+}
+
+function showAdminPanel(){
+  const adminContent = document.getElementById('adminContent');
+  adminContent.innerHTML = `
+    <h3 style="margin-top:0">Menu Editor</h3>
+    <form id="adminForm" class="admin-form" onsubmit="return false;">
+      <input id="aName" placeholder="Name" required>
+      <input id="aCategory" placeholder="Category" required>
+      <input id="aPrice" placeholder="Price" type="number" required>
+      <input id="aImage" placeholder="Image URL (optional)">
+      <button id="addItem" class="btn">Add Item</button>
+    </form>
+    <div id="adminList" style="margin-top:12px"></div>
+  `;
+  renderAdminList();
+
+  document.getElementById('addItem').addEventListener('click', ()=>{
+    const name = document.getElementById('aName').value.trim();
+    const cat = document.getElementById('aCategory').value.trim();
+    const price = Number(document.getElementById('aPrice').value) || 0;
+    const img = document.getElementById('aImage').value.trim() || 'https://via.placeholder.com/400x300';
+    if(!name || !cat || !price){ alert('Please fill name, category, price'); return; }
+    const id = 'm' + Date.now();
+    menu.push({ id, name, category:cat, price, image:img });
+    saveMenu(menu); renderAdminList(); renderMenu(); alert('Added');
+    document.getElementById('aName').value=''; document.getElementById('aCategory').value=''; document.getElementById('aPrice').value=''; document.getElementById('aImage').value='';
+  });
+}
+
+function renderAdminList(){
+  const el = document.getElementById('adminList'); el.innerHTML = '';
+  menu.forEach(m=>{
+    const row = document.createElement('div'); row.style.display='flex'; row.style.justifyContent='space-between'; row.style.alignItems='center'; row.style.marginBottom='8px';
+    row.innerHTML = `<div>${escapeHtml(m.name)} • <span class="muted">${escapeHtml(m.category)}</span> • ₹${Number(m.price).toFixed(2)}</div><div><button data-del="${m.id}" style="background:#eee;border-radius:6px;padding:6px;border:1px solid #ddd">Delete</button></div>`;
+    el.appendChild(row);
+  });
+  el.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      const id = e.target.dataset.del;
+      if(!confirm('Delete this item?')) return;
+      menu = menu.filter(x=>x.id!==id); saveMenu(menu);
+      renderAdminList(); renderMenu();
+    });
+  });
+}
+
+/* ---------------------------
+   Utilities
+   --------------------------- */
+function escapeHtml(s){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;') }
+
+</script>
+</body>
+</html>
